@@ -68,9 +68,10 @@ export type PlatformRevenue = {
   amount: number;
 };
 
-export type Saving = {
+export type Desconto = {
   id: string;
-  person: string;
+  employee_id: string | null;
+  person: string | null;
   date: string | null;
   amount: number;
   note: string | null;
@@ -83,6 +84,14 @@ export type Settings = {
   default_free_deliveries: number;
   kitchen_amount: number;
 };
+
+/** Linha em `days` = caixa aberto. `closed_at` preenchido = fechado. */
+export type CaixaState = "sem_abrir" | "aberto" | "fechado";
+
+export function caixaState(day: Pick<Day, "closed_at"> | null): CaixaState {
+  if (!day) return "sem_abrir";
+  return day.closed_at ? "fechado" : "aberto";
+}
 
 export type DaySummary = {
   id: string;

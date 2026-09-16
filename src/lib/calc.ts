@@ -47,22 +47,29 @@ export function dayTotals(
 }
 
 /**
- * Pagamento do funcionario — replica exatamente a regra da planilha.
+ * Pagamento do funcionario.
  *
  * Cozinha (ou qualquer um com valor fixo): valor fixo, nao depende de entregas.
- * Entregador: (entregas - entregas_livres) * valor_por_entrega + diaria.
+ * Entregador: a diaria e um piso. Ate a franquia de entregas ele recebe a diaria
+ * cheia; so a partir da entrega seguinte cada uma soma o valor unitario.
  *
- * ATENCAO: nao existe piso. Assim como na planilha, entregas abaixo da franquia
- * reduzem o valor para baixo da diaria — (5 - 10) * 7 + 120 = 85. Quem nao
- * trabalhou no dia fica sem turno lancado (ou com entregas em branco) e recebe 0,
- * que e como a planilha zerava a linha na mao.
+ *   ate 10 entregas  -> R$ 120
+ *   11 entregas      -> R$ 127
+ *   20 entregas      -> R$ 190
+ *
+ * A planilha antiga nao tinha esse piso e pagava (5 - 10) * 7 + 120 = 85 para
+ * quem fizesse poucas entregas. Os turnos ja importados guardam o valor que foi
+ * pago na epoca; a regra daqui vale para lancamento novo ou editado.
+ *
+ * Quem nao trabalhou nao tem turno lancado e recebe 0.
  */
 export function shiftAmount(employee: Employee, deliveries: number | null): number {
   if (employee.role === "cozinha" || employee.fixed_amount != null) {
     return round(employee.fixed_amount ?? 0);
   }
   if (deliveries == null) return 0;
-  return round((deliveries - employee.free_deliveries) * employee.per_delivery + employee.daily_rate);
+  const extras = Math.max(0, deliveries - employee.free_deliveries);
+  return round(extras * employee.per_delivery + employee.daily_rate);
 }
 
 export function formatBRL(n: number | null | undefined): string {

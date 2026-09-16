@@ -32,7 +32,7 @@ export default async function FuncionariosPage({
 
   const supabase = await createClient();
 
-  const [empRes, shiftRes, setRes, allDaysRes] = await Promise.all([
+  const [empRes, shiftRes, setRes, allDaysRes, descRes] = await Promise.all([
     supabase.from("employees").select("*").order("active", { ascending: false }).order("name"),
     supabase
       .from("day_shifts")
@@ -41,18 +41,39 @@ export default async function FuncionariosPage({
       .lte("days.date", lastDayOfMonth(month)),
     supabase.from("settings").select("*").eq("id", 1).single(),
     supabase.from("days").select("date").order("date", { ascending: false }),
+    supabase
+      .from("descontos")
+      .select("employee_id, amount")
+      .gte("date", `${month}-01`)
+      .lte("date", lastDayOfMonth(month)),
   ]);
 
   const shifts = (shiftRes.data ?? []) as {
     employee_id: string; deliveries: number | null; amount: number | null;
   }[];
 
-  const totals: Record<string, { dias: number; entregas: number; valor: number }> = {};
+  const totals: Record<
+    string,
+    { dias: number; entregas: number; bruto: number; desconto: number; valor: number }
+  > = {};
   for (const s of shifts) {
-    const t = (totals[s.employee_id] ??= { dias: 0, entregas: 0, valor: 0 });
+    const t = (totals[s.employee_id] ??= { dias: 0, entregas: 0, bruto: 0, desconto: 0, valor: 0 });
     t.dias += 1;
     t.entregas += s.deliveries ?? 0;
-    t.valor += Number(s.amount ?? 0);
+    t.bruto += Number(s.amount ?? 0);
+  }
+
+  // Desconto de motoboy abate do que ele recebe. O da cozinha e so registro:
+  // o valor da cozinha e do time inteiro, nao de cada pessoa.
+  const byId = new Map(((empRes.data as Employee[]) ?? []).map((e) => [e.id, e]));
+  for (const d of (descRes.data as { employee_id: string | null; amount: number }[]) ?? []) {
+    if (!d.employee_id) continue;
+    const t = (totals[d.employee_id] ??= { dias: 0, entregas: 0, bruto: 0, desconto: 0, valor: 0 });
+    t.desconto += Number(d.amount);
+  }
+  for (const [id, t] of Object.entries(totals)) {
+    const abate = byId.get(id)?.role === "entregador" ? t.desconto : 0;
+    t.valor = Math.round((t.bruto - abate) * 100) / 100;
   }
 
   const months = Array.from(

@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import CaixaEditor from "@/components/CaixaEditor";
+import AbrirCaixa from "@/components/AbrirCaixa";
 import Nav from "@/components/Nav";
-import type { Day, Employee, Entry, PlatformRevenue, Shift } from "@/lib/types";
+import type { Day, Desconto, Employee, Entry, PlatformRevenue, Shift } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -26,21 +27,19 @@ export default async function CaixaDiaPage({
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) redirect("/caixa");
 
   const supabase = await createClient();
-
   const { data: day } = await supabase
     .from("days").select("*").eq("date", date).maybeSingle();
 
-  const [entriesRes, shiftsRes, platformsRes, employeesRes] = await Promise.all([
-    day
-      ? supabase.from("entries").select("*").eq("day_id", day.id).order("position")
-      : Promise.resolve({ data: [] as Entry[] }),
-    day
-      ? supabase.from("day_shifts").select("*").eq("day_id", day.id)
-      : Promise.resolve({ data: [] as Shift[] }),
-    day
-      ? supabase.from("platform_revenue").select("*").eq("day_id", day.id)
-      : Promise.resolve({ data: [] as PlatformRevenue[] }),
+  const [entriesRes, shiftsRes, platformsRes, employeesRes, descontosRes] = await Promise.all([
+    day ? supabase.from("entries").select("*").eq("day_id", day.id).order("position")
+        : Promise.resolve({ data: [] as Entry[] }),
+    day ? supabase.from("day_shifts").select("*").eq("day_id", day.id)
+        : Promise.resolve({ data: [] as Shift[] }),
+    day ? supabase.from("platform_revenue").select("*").eq("day_id", day.id)
+        : Promise.resolve({ data: [] as PlatformRevenue[] }),
     supabase.from("employees").select("*").eq("active", true).order("role").order("name"),
+    day ? supabase.from("descontos").select("*").eq("date", date)
+        : Promise.resolve({ data: [] as Desconto[] }),
   ]);
 
   return (
@@ -56,14 +55,19 @@ export default async function CaixaDiaPage({
           </Link>
         </div>
 
-        <CaixaEditor
-          date={date}
-          day={(day as Day) ?? null}
-          entries={(entriesRes.data as Entry[]) ?? []}
-          shifts={(shiftsRes.data as Shift[]) ?? []}
-          platforms={(platformsRes.data as PlatformRevenue[]) ?? []}
-          employees={(employeesRes.data as Employee[]) ?? []}
-        />
+        {day ? (
+          <CaixaEditor
+            date={date}
+            day={day as Day}
+            entries={(entriesRes.data as Entry[]) ?? []}
+            shifts={(shiftsRes.data as Shift[]) ?? []}
+            platforms={(platformsRes.data as PlatformRevenue[]) ?? []}
+            employees={(employeesRes.data as Employee[]) ?? []}
+            descontos={(descontosRes.data as Desconto[]) ?? []}
+          />
+        ) : (
+          <AbrirCaixa date={date} />
+        )}
       </main>
     </>
   );

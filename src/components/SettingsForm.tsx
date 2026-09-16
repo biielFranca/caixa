@@ -44,7 +44,7 @@ export default function SettingsForm({ settings }: { settings: Settings }) {
   const FIELDS: [keyof typeof form, string, string][] = [
     ["default_daily_rate", "Diária padrão", "Valor base que o entregador recebe no dia."],
     ["default_per_delivery", "Valor por entrega", "Pago por entrega acima da franquia."],
-    ["default_free_deliveries", "Entregas inclusas na diária", "Quantas entregas já estão pagas pela diária."],
+    ["default_free_deliveries", "Entregas inclusas na diária", "Até esse número o valor é a diária cheia."],
     ["kitchen_amount", "Valor da cozinha", "Valor fixo por dia trabalhado."],
   ];
 
@@ -74,10 +74,15 @@ export default function SettingsForm({ settings }: { settings: Settings }) {
 
       <div className="rounded-lg border border-line bg-bg p-3 text-sm">
         <span className="text-muted">Simulação: </span>
-        20 entregas ={" "}
-        <strong className="tabular-nums">{formatBRL((20 - free) * per + daily)}</strong>
-        <span className="text-muted"> · 5 entregas = </span>
-        <strong className="tabular-nums">{formatBRL((5 - free) * per + daily)}</strong>
+        {[5, free, free + 1, 20].map((n, i) => (
+          <span key={n}>
+            {i > 0 && <span className="text-muted"> · </span>}
+            <span className="text-muted">{n} entregas = </span>
+            <strong className="tabular-nums">
+              {formatBRL(Math.max(0, n - free) * per + daily)}
+            </strong>
+          </span>
+        ))}
       </div>
 
       {message && <p className="text-sm text-pos">{message}</p>}

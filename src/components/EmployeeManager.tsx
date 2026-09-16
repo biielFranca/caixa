@@ -6,7 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 import { formatBRL, shiftAmount, slugify } from "@/lib/calc";
 import type { Employee, Role, Settings } from "@/lib/types";
 
-type Totals = Record<string, { dias: number; entregas: number; valor: number }>;
+type Totals = Record<
+  string,
+  { dias: number; entregas: number; bruto: number; desconto: number; valor: number }
+>;
 
 const EMPTY = {
   name: "", role: "entregador" as Role,
@@ -106,10 +109,13 @@ export default function EmployeeManager({
         <td className="py-2 pr-3 text-xs text-muted">
           {emp.role === "cozinha" || emp.fixed_amount != null
             ? `Fixo ${formatBRL(emp.fixed_amount ?? 0)}`
-            : `(entregas − ${emp.free_deliveries}) × ${formatBRL(emp.per_delivery)} + ${formatBRL(emp.daily_rate)}`}
+            : `${formatBRL(emp.daily_rate)} até ${emp.free_deliveries} entregas, +${formatBRL(emp.per_delivery)} por entrega acima`}
         </td>
         <td className="py-2 pr-3 text-right tabular-nums">{t?.dias ?? 0}</td>
         <td className="py-2 pr-3 text-right tabular-nums">{t?.entregas ?? 0}</td>
+        <td className="py-2 pr-3 text-right tabular-nums text-muted">
+          {t?.desconto ? formatBRL(t.desconto) : "—"}
+        </td>
         <td className="py-2 pr-3 text-right font-medium tabular-nums">{formatBRL(t?.valor ?? 0)}</td>
         <td className="py-2 text-right">
           <button onClick={() => startEdit(emp)} className="px-2 text-sm text-muted hover:text-brand">
@@ -205,7 +211,9 @@ export default function EmployeeManager({
         <p className="text-xs text-muted">
           {form.role === "cozinha"
             ? `Recebe ${formatBRL(preview)} por dia trabalhado.`
-            : `Exemplo: com 20 entregas receberia ${formatBRL(preview)}.`}
+            : `A diária é o piso: até ${form.free_deliveries || settings.default_free_deliveries} ` +
+              `entregas recebe ${formatBRL(Number(form.daily_rate || settings.default_daily_rate))}. ` +
+              `Com 20 entregas, ${formatBRL(preview)}.`}
         </p>
 
         {error && <p className="text-sm text-neg">{error}</p>}
@@ -230,6 +238,7 @@ export default function EmployeeManager({
               <th className="py-2 pr-3">Regra</th>
               <th className="py-2 pr-3 text-right">Dias</th>
               <th className="py-2 pr-3 text-right">Entregas</th>
+              <th className="py-2 pr-3 text-right">Desconto</th>
               <th className="py-2 pr-3 text-right">Pago</th>
               <th className="py-2"></th>
             </tr>
@@ -237,7 +246,7 @@ export default function EmployeeManager({
           <tbody>
             {active.map((emp) => <Row key={emp.id} emp={emp} />)}
             {active.length === 0 && (
-              <tr><td colSpan={7} className="py-6 text-center text-muted">Nenhum funcionário ativo.</td></tr>
+              <tr><td colSpan={8} className="py-6 text-center text-muted">Nenhum funcionário ativo.</td></tr>
             )}
           </tbody>
         </table>

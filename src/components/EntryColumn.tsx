@@ -7,12 +7,13 @@ import type { Method } from "@/lib/types";
 export type DraftEntry = { key: string; amount: number; note: string | null };
 
 export default function EntryColumn({
-  title, method, entries, onChange,
+  title, method, entries, onChange, readOnly = false,
 }: {
   title: string;
   method: Method;
   entries: DraftEntry[];
   onChange: (next: DraftEntry[]) => void;
+  readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +39,7 @@ export default function EntryColumn({
         <span className="text-xs text-muted">{entries.length} lanç.</span>
       </div>
 
+      {!readOnly && (
       <div className="mt-3 flex gap-2">
         <input
           ref={inputRef}
@@ -55,20 +57,23 @@ export default function EntryColumn({
           +
         </button>
       </div>
+      )}
 
       <ul className="mt-3 max-h-72 space-y-1 overflow-y-auto">
         {entries.map((e, i) => (
           <li key={e.key} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-bg">
             <span className="w-6 shrink-0 text-xs text-muted tabular-nums">{i + 1}</span>
             <span className="flex-1 tabular-nums">{formatBRL(e.amount)}</span>
-            <button
-              type="button"
-              onClick={() => onChange(entries.filter((x) => x.key !== e.key))}
-              className="shrink-0 px-1 text-sm text-muted hover:text-neg"
-              aria-label={`Remover lançamento ${i + 1}`}
-            >
-              ×
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => onChange(entries.filter((x) => x.key !== e.key))}
+                className="shrink-0 px-1 text-sm text-muted hover:text-neg"
+                aria-label={`Remover lançamento ${i + 1}`}
+              >
+                ×
+              </button>
+            )}
           </li>
         ))}
         {entries.length === 0 && (
