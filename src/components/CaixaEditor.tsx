@@ -339,7 +339,7 @@ export default function CaixaEditor({
           </div>
 
           {/* Conferencia */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Stat label="Total caderno" value={totals.caderno} hint="Tudo que foi lançado" />
             <Stat label="Total caixa" value={totals.caixa} hint="Conferido, sem o fundo de troco" />
             <Stat
@@ -347,7 +347,6 @@ export default function CaixaEditor({
               value={totals.diferenca} hint="Caixa − caderno"
               tone={diffTone as "neutral" | "pos" | "neg"}
             />
-            <Stat label="Total livre" value={livre} hint="Soma dos canais" />
           </div>
 
           {/* Motoboys */}
@@ -450,7 +449,11 @@ export default function CaixaEditor({
           {/* Canais + observacoes */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="card">
-              <h3 className="font-semibold">Total livre</h3>
+              <div className="flex items-baseline justify-between">
+                <h3 className="font-semibold">Total livre</h3>
+                <span className="text-lg font-semibold tabular-nums">{formatBRL(livre)}</span>
+              </div>
+              <p className="mt-1 text-xs text-muted">Soma dos canais.</p>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 {PLATFORMS.map((p) => (
                   <div key={p} className="space-y-1">
