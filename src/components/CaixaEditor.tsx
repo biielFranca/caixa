@@ -47,7 +47,17 @@ export default function CaixaEditor({
   const showAll = isClosed || step === "fechando";
 
   const motoboys = useMemo(() => employees.filter((e) => e.role === "entregador"), [employees]);
-  const cozinha = useMemo(() => employees.filter((e) => e.role !== "entregador"), [employees]);
+  // A folha da cozinha e uma linha so, do time inteiro. As pessoas da cozinha
+  // existem para carregar desconto e nao tem valor individual.
+  const cozinhaTime = useMemo(
+    () => employees.find((e) => e.role !== "entregador" && Number(e.fixed_amount ?? 0) > 0) ?? null,
+    [employees]
+  );
+  const cozinhaPessoas = useMemo(
+    () => employees.filter((e) => e.role !== "entregador" && e.id !== cozinhaTime?.id),
+    [employees, cozinhaTime]
+  );
+  const valorCozinha = round(Number(cozinhaTime?.fixed_amount ?? 0));
 
   const [cashOpen, setCashOpen] = useState(String(day.cash_open ?? 0));
   const [coinOpen, setCoinOpen] = useState(String(day.coin_open ?? 0));
@@ -116,9 +126,9 @@ export default function CaixaEditor({
   }
 
   const folha = useMemo(
-    () => round(employees.reduce((a, e) => a + pagamentoDe(e).liquido, 0)),
+    () => round(motoboys.reduce((a, e) => a + pagamentoDe(e).liquido, 0) + valorCozinha),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shiftDraft, employees]
+    [shiftDraft, motoboys, valorCozinha]
   );
   const livre = useMemo(
     () => round(PLATFORMS.reduce((a, p) => a + toNumber(platformDraft[p]), 0)),
@@ -156,7 +166,7 @@ export default function CaixaEditor({
     if (closing) {
       const { error: delShifts } = await supabase.from("day_shifts").delete().eq("day_id", day.id);
       if (delShifts) throw delShifts;
-      const shiftRows = employees
+      const shiftRows = motoboys
         .filter((e) => shiftDraft[e.id]?.enabled)
         .map((e) => {
           const d = shiftDraft[e.id];
@@ -166,6 +176,13 @@ export default function CaixaEditor({
             amount: pagamentoDe(e).bruto, note: d.note.trim() || null,
           };
         });
+      // A cozinha entra em todo dia fechado, sem marcacao: o valor e fixo.
+      if (cozinhaTime) {
+        shiftRows.push({
+          day_id: day.id, employee_id: cozinhaTime.id, deliveries: null,
+          amount: valorCozinha, note: null,
+        });
+      }
       if (shiftRows.length) {
         const { error } = await supabase.from("day_shifts").insert(shiftRows);
         if (error) throw error;
@@ -408,38 +425,21 @@ export default function CaixaEditor({
             </div>
           </div>
 
-          {/* Cozinha */}
+          {/* Cozinha — valor fixo do time, sem marcacao individual */}
           <div className="card">
-            <h3 className="font-semibold">Cozinha</h3>
+            <div className="flex items-baseline justify-between">
+              <h3 className="font-semibold">Cozinha</h3>
+              <span className="text-lg font-semibold tabular-nums">{formatBRL(valorCozinha)}</span>
+            </div>
             <p className="mt-1 text-xs text-muted">
-              O valor da cozinha é do time inteiro. Desconto individual é lançado em Descontos
-              e não abate daqui.
+              Valor do time inteiro, lançado em todo fechamento. Para alterar, edite em
+              Funcionários. Desconto individual é lançado em Descontos e não abate daqui.
             </p>
-            <ul className="mt-3 divide-y divide-line">
-              {cozinha.map((emp) => {
-                const d = shiftDraft[emp.id];
-                return (
-                  <li key={emp.id} className="flex items-center gap-3 py-2 text-sm">
-                    <input
-                      type="checkbox" checked={d.enabled} disabled={isClosed}
-                      onChange={(e) =>
-                        setShiftDraft((s) => ({
-                          ...s, [emp.id]: { ...s[emp.id], enabled: e.target.checked },
-                        }))
-                      }
-                      aria-label={`${emp.name} trabalhou`}
-                      className="size-4 accent-[rgb(var(--brand))]"
-                    />
-                    <span className="flex-1">{emp.name}</span>
-                    <span className="tabular-nums text-muted">
-                      {Number(emp.fixed_amount ?? 0) > 0
-                        ? formatBRL(Number(emp.fixed_amount))
-                        : "incluso"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            {cozinhaPessoas.length > 0 && (
+              <p className="mt-3 text-sm text-muted">
+                {cozinhaPessoas.map((e) => e.name).join(" · ")}
+              </p>
+            )}
           </div>
 
           <div className="card flex items-baseline justify-between">
