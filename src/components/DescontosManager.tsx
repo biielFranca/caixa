@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { formatBRL, formatDateBR, round, todayISO } from "@/lib/calc";
+import { formatBRL, formatDateBR, parseMoney, round, todayISO } from "@/lib/calc";
+import MoneyInput from "./MoneyInput";
 import type { Desconto, Employee } from "@/lib/types";
 
 export default function DescontosManager({
@@ -41,8 +42,8 @@ export default function DescontosManager({
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
-    const value = Number(amount.replace(",", "."));
-    if (!employeeId || !Number.isFinite(value) || value === 0) {
+    const value = parseMoney(amount);
+    if (!employeeId || value === 0) {
       setError("Escolha a pessoa e informe um valor diferente de zero.");
       return;
     }
@@ -96,10 +97,7 @@ export default function DescontosManager({
           </div>
           <div className="space-y-1">
             <label className="label">Valor</label>
-            <input
-              className="input tabular-nums" inputMode="decimal" placeholder="0,00"
-              value={amount} onChange={(e) => setAmount(e.target.value)}
-            />
+            <MoneyInput value={amount} onChange={setAmount} ariaLabel="Valor do desconto" />
           </div>
           <div className="space-y-1">
             <label className="label">Data</label>

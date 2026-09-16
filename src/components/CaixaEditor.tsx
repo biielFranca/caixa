@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { dayTotals, formatBRL, formatDateBR, round, shiftAmount, weekdayBR } from "@/lib/calc";
+import { dayTotals, formatBRL, formatDateBR, parseMoney, round, shiftAmount, weekdayBR } from "@/lib/calc";
 import { METHOD_LABEL, PLATFORMS, PLATFORM_LABEL } from "@/lib/types";
 import type {
   Day, Desconto, Employee, Entry, Method, Platform, PlatformRevenue, Shift,
 } from "@/lib/types";
 import EntryColumn, { type DraftEntry } from "./EntryColumn";
+import MoneyInput from "./MoneyInput";
 import { Stat } from "./Stat";
 
 type Props = {
@@ -29,10 +30,7 @@ type ShiftDraft = {
   note: string;
 };
 
-function toNumber(v: string): number {
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
-}
+const toNumber = parseMoney;
 
 export default function CaixaEditor({
   date, day, entries, shifts, employees, platforms, descontos,
@@ -316,9 +314,8 @@ export default function CaixaEditor({
             ].map((f) => (
               <div key={f.label} className="space-y-1">
                 <label className="label">{f.label}</label>
-                <input
-                  className="input tabular-nums" inputMode="decimal" disabled={isClosed}
-                  value={f.value} onChange={(e) => f.set(e.target.value)}
+                <MoneyInput
+                  value={f.value} onChange={f.set} disabled={isClosed} ariaLabel={f.label}
                 />
               </div>
             ))}
@@ -385,12 +382,13 @@ export default function CaixaEditor({
                           {d.enabled ? formatBRL(pg.bruto) : "—"}
                         </td>
                         <td className="py-2 pr-2">
-                          <input
-                            className="input w-24 tabular-nums" inputMode="decimal" placeholder="0,00"
-                            value={d.desconto} disabled={!d.enabled || isClosed}
-                            onChange={(e) => update({ desconto: e.target.value })}
-                            aria-label={`Desconto de ${emp.name}`}
-                          />
+                          <div className="w-28">
+                            <MoneyInput
+                              value={d.desconto} disabled={!d.enabled || isClosed}
+                              onChange={(v) => update({ desconto: v })}
+                              ariaLabel={`Desconto de ${emp.name}`}
+                            />
+                          </div>
                         </td>
                         <td className="py-2 pr-2 text-right font-medium tabular-nums">
                           {d.enabled ? formatBRL(pg.liquido) : "—"}
@@ -457,10 +455,10 @@ export default function CaixaEditor({
                 {PLATFORMS.map((p) => (
                   <div key={p} className="space-y-1">
                     <label className="label">{PLATFORM_LABEL[p]}</label>
-                    <input
-                      className="input tabular-nums" inputMode="decimal" placeholder="0,00"
+                    <MoneyInput
                       value={platformDraft[p]} disabled={isClosed}
-                      onChange={(e) => setPlatformDraft((s) => ({ ...s, [p]: e.target.value }))}
+                      onChange={(v) => setPlatformDraft((s) => ({ ...s, [p]: v }))}
+                      ariaLabel={PLATFORM_LABEL[p]}
                     />
                   </div>
                 ))}

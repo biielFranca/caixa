@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { formatBRL } from "@/lib/calc";
+import { formatBRL, parseMoney } from "@/lib/calc";
+import MoneyInput from "./MoneyInput";
 import type { Settings } from "@/lib/types";
 
 export default function SettingsForm({ settings }: { settings: Settings }) {
@@ -18,8 +19,8 @@ export default function SettingsForm({ settings }: { settings: Settings }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const daily = Number(form.default_daily_rate) || 0;
-  const per = Number(form.default_per_delivery) || 0;
+  const daily = parseMoney(form.default_daily_rate);
+  const per = parseMoney(form.default_per_delivery);
   const free = Number(form.default_free_deliveries) || 0;
 
   async function save(e: React.FormEvent) {
@@ -32,7 +33,7 @@ export default function SettingsForm({ settings }: { settings: Settings }) {
         default_daily_rate: daily,
         default_per_delivery: per,
         default_free_deliveries: free,
-        kitchen_amount: Number(form.kitchen_amount) || 0,
+        kitchen_amount: parseMoney(form.kitchen_amount),
         updated_at: new Date().toISOString(),
       })
       .eq("id", 1);
@@ -62,11 +63,18 @@ export default function SettingsForm({ settings }: { settings: Settings }) {
         {FIELDS.map(([key, label, hint]) => (
           <div key={key} className="space-y-1">
             <label className="label">{label}</label>
-            <input
-              className="input tabular-nums" inputMode="decimal"
-              value={form[key]}
-              onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-            />
+            {key === "default_free_deliveries" ? (
+              <input
+                className="input tabular-nums" inputMode="numeric" aria-label={label}
+                value={form[key]}
+                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+              />
+            ) : (
+              <MoneyInput
+                value={form[key]} ariaLabel={label}
+                onChange={(v) => setForm({ ...form, [key]: v })}
+              />
+            )}
             <p className="text-xs text-muted">{hint}</p>
           </div>
         ))}

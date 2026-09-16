@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { formatDateBR, weekdayBR } from "@/lib/calc";
+import { formatDateBR, parseMoney, weekdayBR } from "@/lib/calc";
+import MoneyInput from "./MoneyInput";
 
 /** Estado inicial do dia: o caixa so passa a existir depois de aberto. */
 export default function AbrirCaixa({ date }: { date: string }) {
@@ -20,8 +21,8 @@ export default function AbrirCaixa({ date }: { date: string }) {
     setError(null);
     const { error } = await supabase.from("days").insert({
       date,
-      cash_open: Number(cashOpen.replace(",", ".")) || 0,
-      coin_open: Number(coinOpen.replace(",", ".")) || 0,
+      cash_open: parseMoney(cashOpen),
+      coin_open: parseMoney(coinOpen),
       closed_at: null,
     });
     if (error) {
@@ -53,19 +54,11 @@ export default function AbrirCaixa({ date }: { date: string }) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="label" htmlFor="cash">Dinheiro inicial</label>
-            <input
-              id="cash" className="input tabular-nums" inputMode="decimal"
-              placeholder="0,00" autoFocus
-              value={cashOpen} onChange={(e) => setCashOpen(e.target.value)}
-            />
+            <MoneyInput id="cash" value={cashOpen} onChange={setCashOpen} ariaLabel="Dinheiro inicial" />
           </div>
           <div className="space-y-1">
             <label className="label" htmlFor="coin">Moeda inicial</label>
-            <input
-              id="coin" className="input tabular-nums" inputMode="decimal"
-              placeholder="0,00"
-              value={coinOpen} onChange={(e) => setCoinOpen(e.target.value)}
-            />
+            <MoneyInput id="coin" value={coinOpen} onChange={setCoinOpen} ariaLabel="Moeda inicial" />
           </div>
         </div>
 

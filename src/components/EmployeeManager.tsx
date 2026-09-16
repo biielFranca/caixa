@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { formatBRL, shiftAmount, slugify } from "@/lib/calc";
+import { formatBRL, parseMoney, shiftAmount, slugify } from "@/lib/calc";
+import MoneyInput from "./MoneyInput";
 import type { Employee, Role, Settings } from "@/lib/types";
 
 type Totals = Record<
@@ -60,12 +61,12 @@ export default function EmployeeManager({
       name: form.name.trim(),
       slug: slugify(form.name),
       role: form.role,
-      daily_rate: Number(form.daily_rate || settings.default_daily_rate),
-      per_delivery: Number(form.per_delivery || settings.default_per_delivery),
+      daily_rate: form.daily_rate.trim() ? parseMoney(form.daily_rate) : settings.default_daily_rate,
+      per_delivery: form.per_delivery.trim() ? parseMoney(form.per_delivery) : settings.default_per_delivery,
       free_deliveries: Number(form.free_deliveries || settings.default_free_deliveries),
       fixed_amount: isKitchen
-        ? Number(form.fixed_amount || settings.kitchen_amount)
-        : form.fixed_amount.trim() ? Number(form.fixed_amount) : null,
+        ? (form.fixed_amount.trim() ? parseMoney(form.fixed_amount) : settings.kitchen_amount)
+        : form.fixed_amount.trim() ? parseMoney(form.fixed_amount) : null,
     };
 
     const { error } = editing
@@ -134,13 +135,13 @@ export default function EmployeeManager({
 
   const preview =
     form.role === "cozinha"
-      ? Number(form.fixed_amount || settings.kitchen_amount)
+      ? (form.fixed_amount.trim() ? parseMoney(form.fixed_amount) : settings.kitchen_amount)
       : shiftAmount(
           {
             role: form.role,
-            fixed_amount: form.fixed_amount.trim() ? Number(form.fixed_amount) : null,
-            daily_rate: Number(form.daily_rate || settings.default_daily_rate),
-            per_delivery: Number(form.per_delivery || settings.default_per_delivery),
+            fixed_amount: form.fixed_amount.trim() ? parseMoney(form.fixed_amount) : null,
+            daily_rate: form.daily_rate.trim() ? parseMoney(form.daily_rate) : settings.default_daily_rate,
+            per_delivery: form.per_delivery.trim() ? parseMoney(form.per_delivery) : settings.default_per_delivery,
             free_deliveries: Number(form.free_deliveries || settings.default_free_deliveries),
           } as Employee,
           20
@@ -172,28 +173,28 @@ export default function EmployeeManager({
           {form.role === "cozinha" ? (
             <div className="space-y-1">
               <label className="label">Valor fixo</label>
-              <input
-                className="input tabular-nums" inputMode="decimal"
-                placeholder={String(settings.kitchen_amount)} value={form.fixed_amount}
-                onChange={(e) => setForm({ ...form, fixed_amount: e.target.value })}
+              <MoneyInput
+                value={form.fixed_amount} ariaLabel="Valor fixo"
+                placeholder={String(settings.kitchen_amount)}
+                onChange={(v) => setForm({ ...form, fixed_amount: v })}
               />
             </div>
           ) : (
             <>
               <div className="space-y-1">
                 <label className="label">Diária</label>
-                <input
-                  className="input tabular-nums" inputMode="decimal"
-                  placeholder={String(settings.default_daily_rate)} value={form.daily_rate}
-                  onChange={(e) => setForm({ ...form, daily_rate: e.target.value })}
+                <MoneyInput
+                  value={form.daily_rate} ariaLabel="Diária"
+                  placeholder={String(settings.default_daily_rate)}
+                  onChange={(v) => setForm({ ...form, daily_rate: v })}
                 />
               </div>
               <div className="space-y-1">
                 <label className="label">Por entrega</label>
-                <input
-                  className="input tabular-nums" inputMode="decimal"
-                  placeholder={String(settings.default_per_delivery)} value={form.per_delivery}
-                  onChange={(e) => setForm({ ...form, per_delivery: e.target.value })}
+                <MoneyInput
+                  value={form.per_delivery} ariaLabel="Por entrega"
+                  placeholder={String(settings.default_per_delivery)}
+                  onChange={(v) => setForm({ ...form, per_delivery: v })}
                 />
               </div>
               <div className="space-y-1">
@@ -212,7 +213,7 @@ export default function EmployeeManager({
           {form.role === "cozinha"
             ? `Recebe ${formatBRL(preview)} por dia trabalhado.`
             : `A diária é o piso: até ${form.free_deliveries || settings.default_free_deliveries} ` +
-              `entregas recebe ${formatBRL(Number(form.daily_rate || settings.default_daily_rate))}. ` +
+              `entregas recebe ${formatBRL(form.daily_rate.trim() ? parseMoney(form.daily_rate) : settings.default_daily_rate)}. ` +
               `Com 20 entregas, ${formatBRL(preview)}.`}
         </p>
 

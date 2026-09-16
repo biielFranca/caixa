@@ -72,6 +72,28 @@ export function shiftAmount(employee: Employee, deliveries: number | null): numb
   return round(extras * employee.per_delivery + employee.daily_rate);
 }
 
+/**
+ * Le um valor monetario digitado a mao, aceitando os dois formatos que o
+ * caixa usa: "1.234,56" (pt-BR) e "1234.56". Vazio vira 0.
+ */
+export function parseMoney(input: string | number | null | undefined): number {
+  if (typeof input === "number") return Number.isFinite(input) ? input : 0;
+  const raw = String(input ?? "").trim();
+  if (!raw) return 0;
+  const cleaned = raw.replace(/[^\d,.-]/g, "");
+  // Com virgula, ela e o separador decimal e o ponto e de milhar.
+  const normalized = cleaned.includes(",")
+    ? cleaned.replace(/\./g, "").replace(",", ".")
+    : cleaned;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Numero no formato pt-BR, sem o simbolo — o R$ fica fora do campo. */
+export function formatAmount(n: number): string {
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 export function formatBRL(n: number | null | undefined): string {
   return (Number(n) || 0).toLocaleString("pt-BR", {
     style: "currency",

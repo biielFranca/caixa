@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { formatBRL, sum } from "@/lib/calc";
+import { useState } from "react";
+import { formatBRL, parseMoney, sum } from "@/lib/calc";
+import MoneyInput from "./MoneyInput";
 import type { Method } from "@/lib/types";
 
 export type DraftEntry = { key: string; amount: number; note: string | null };
@@ -16,18 +17,15 @@ export default function EntryColumn({
   readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
 
   function add() {
-    // Aceita "12,50" e "12.50" — o caixa digita dos dois jeitos.
-    const value = Number(draft.replace(",", "."));
-    if (!draft.trim() || !Number.isFinite(value) || value === 0) return;
+    const value = parseMoney(draft);
+    if (!draft.trim() || value === 0) return;
     onChange([
       ...entries,
       { key: `${method}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, amount: value, note: null },
     ]);
     setDraft("");
-    inputRef.current?.focus();
   }
 
   const total = sum(entries.map((e) => e.amount));
@@ -41,18 +39,12 @@ export default function EntryColumn({
 
       {!readOnly && (
       <div className="mt-3 flex gap-2">
-        <input
-          ref={inputRef}
-          className="input"
-          inputMode="decimal"
-          placeholder="0,00"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); add(); }
-          }}
-          aria-label={`Novo lançamento em ${title}`}
-        />
+        <div className="flex-1" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}>
+          <MoneyInput
+            value={draft} onChange={setDraft}
+            ariaLabel={`Novo lançamento em ${title}`}
+          />
+        </div>
         <button type="button" onClick={add} className="btn-ghost shrink-0" aria-label="Adicionar">
           +
         </button>
