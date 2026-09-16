@@ -42,16 +42,20 @@ TOTAL CAIXA   = (dinheiro contado + moeda contada + pix + cartão)
 DIFERENÇA     = TOTAL CAIXA − TOTAL CADERNO
 ```
 
-Pagamento do entregador:
+Pagamento do motoboy — a diária é piso:
 
 ```
-(entregas − entregas_inclusas) × valor_por_entrega + diária
-(entregas − 10) × 7 + 120
+até 10 entregas  →  R$ 120
+da 11ª em diante →  R$ 120 + (entregas − 10) × 7
 ```
 
-Sem piso, de propósito: 5 entregas dão R$ 85, abaixo da diária, exatamente como
-a planilha calculava. Quem não trabalhou não tem turno lançado. Cozinha é valor
-fixo.
+A planilha antiga não tinha esse piso e pagava `(5 − 10) × 7 + 120 = R$ 85` para
+quem fizesse poucas entregas. Os turnos importados guardam o valor pago na época
+e não foram recalculados; a regra vale para lançamento novo.
+
+Desconto do motoboy é lançado no fechamento e abate do que ele recebe no mês.
+A cozinha é valor fixo do time inteiro, então desconto individual de quem
+trabalha nela fica registrado sem abater nada.
 
 Os padrões ficam em Config e valem para cadastros novos; cada funcionário pode
 ter regra própria. Implementação em `src/lib/calc.ts` e na view.
@@ -61,11 +65,24 @@ ter regra própria. Implementação em `src/lib/calc.ts` e na view.
 | Rota | |
 |---|---|
 | `/` | Totais do dia e do mês, faturamento dos últimos 30 dias, maiores diferenças |
-| `/caixa/[data]` | O fechamento em si — abertura, lançamentos, conferência ao vivo, funcionários, canais |
+| `/caixa/[data]` | O caixa do dia, em três estados (abaixo) |
 | `/historico` | Um mês por vez, com export CSV |
 | `/funcionarios` | Cadastro, regra de pagamento e totais do mês |
-| `/guardado` | Saldo de dinheiro guardado por pessoa |
+| `/descontos` | Descontos por pessoa e período |
 | `/config` | Padrões de pagamento e dias importados pendentes de conferência |
+
+### Os três estados do caixa
+
+O dia não é um formulário só. Linha em `days` significa caixa aberto;
+`closed_at` preenchido significa fechado.
+
+1. **Sem abrir** — apenas o botão de abrir, pedindo o fundo de troco
+2. **Aberto** — só as colunas de dinheiro, pix e cartão, para lançar durante o expediente
+3. **Fechamento** — contagem, conferência, motoboys, cozinha e canais
+4. **Fechado** — leitura, com botão de reabrir
+
+Fechar e reabrir trocam o estado na hora, sem esperar o servidor: o refresh
+leva alguns segundos e no caixa isso vira clique repetido.
 
 ## Migração da planilha
 
@@ -100,6 +117,9 @@ A `service_role key` só é usada pelo script de importação, nunca pela aplica
 nem pela Vercel.
 
 ## Notas
+
+Deploy sai da branch `main`. A Vercel bloqueia commit cujo autor ela não
+reconhece, então o e-mail do commit precisa estar cadastrado na conta.
 
 Um login apenas, criado direto no Supabase — não há cadastro aberto. Toda página
 protegida valida a sessão no servidor via `requireUser()`; o `proxy.ts` apenas
