@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 250 250 249;
+  --surface: 255 255 255;
+  --line: 231 229 228;
+  --ink: 28 25 23;
+  --muted: 120 113 108;
+  --brand: 13 148 136;
+  --pos: 15 118 110;
+  --neg: 190 18 60;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: 12 10 9;
+    --surface: 28 25 23;
+    --line: 60 54 50;
+    --ink: 245 245 244;
+    --muted: 168 162 158;
+    --brand: 45 212 191;
+    --pos: 45 212 191;
+    --neg: 251 113 133;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: 12 10 9;
+  --surface: 28 25 23;
+  --line: 60 54 50;
+  --ink: 245 245 244;
+  --muted: 168 162 158;
+  --brand: 45 212 191;
+  --pos: 45 212 191;
+  --neg: 251 113 133;
+}
+
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Campos numericos sem as setinhas, que atrapalham no celular do caixa. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface p-4;
+  }
+  .label {
+    @apply block text-xs font-medium uppercase tracking-wide text-muted;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink
+           outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2
+           text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary { @apply btn bg-brand text-white hover:opacity-90; }
+  .btn-ghost   { @apply btn border border-line text-ink hover:bg-bg; }
+  .btn-danger  { @apply btn border border-line text-neg hover:bg-neg/10; }
+}
