@@ -1,52 +1,83 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { desenharResumo, type Resumo } from "@/lib/resumoImagem";
 
+type Estado = "parado" | "gerando" | "copiado" | "baixado";
+
+function suportaCopiarImagem() {
+  return (
+    typeof window !== "undefined" &&
+    typeof ClipboardItem !== "undefined" &&
+    !!navigator.clipboard?.write
+  );
+}
+
 /**
- * Gera o resumo do dia como PNG. No celular abre o compartilhamento do
- * sistema, que e como isso chega no WhatsApp; no resto baixa o arquivo.
+ * Copia o resumo do dia para a area de transferencia, pronto para colar no
+ * WhatsApp. Se o navegador nao souber copiar imagem, baixa o arquivo.
  */
 export default function BotaoResumo({ resumo }: { resumo: Resumo }) {
-  const [busy, setBusy] = useState(false);
+  const [estado, setEstado] = useState<Estado>("parado");
   const [erro, setErro] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function gerar() {
-    setBusy(true);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  function avisar(e: Estado) {
+    setEstado(e);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setEstado("parado"), 2500);
+  }
+
+  async function baixar(blob: Blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `caixa-${resumo.data}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+    avisar("baixado");
+  }
+
+  async function copiar() {
+    setEstado("gerando");
     setErro(null);
     try {
-      const blob = await desenharResumo(resumo);
-      const nome = `caixa-${resumo.data}.png`;
-      const file = new File([blob], nome, { type: "image/png" });
-
-      if (navigator.canShare?.({ files: [file] })) {
+      if (suportaCopiarImagem()) {
+        // O ClipboardItem recebe a promessa, e nao o blob pronto: o Safari
+        // exige que ele seja criado ainda dentro do clique.
+        const item = new ClipboardItem({ "image/png": desenharResumo(resumo) });
         try {
-          await navigator.share({ files: [file], title: `Caixa ${resumo.data}` });
+          await navigator.clipboard.write([item]);
+          avisar("copiado");
           return;
-        } catch (e) {
-          // Cancelar o compartilhamento nao e erro: so nao faz nada.
-          if (e instanceof DOMException && e.name === "AbortError") return;
-          // Qualquer outra falha cai no download abaixo.
+        } catch {
+          // Permissao negada ou navegador sem suporte real: cai no download.
         }
       }
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = nome;
-      a.click();
-      URL.revokeObjectURL(url);
+      await baixar(await desenharResumo(resumo));
     } catch (e) {
+      setEstado("parado");
       setErro(e instanceof Error ? e.message : "Não foi possível gerar a imagem.");
-    } finally {
-      setBusy(false);
     }
   }
 
+  const texto = {
+    parado: "Copiar imagem",
+    gerando: "Gerando…",
+    copiado: "Copiado!",
+    baixado: "Baixado",
+  }[estado];
+
   return (
     <>
-      <button onClick={gerar} disabled={busy} className="btn-ghost">
-        {busy ? "Gerando…" : "Exportar imagem"}
+      <button
+        onClick={copiar}
+        disabled={estado === "gerando"}
+        className={estado === "copiado" ? "btn-primary" : "btn-ghost"}
+      >
+        {texto}
       </button>
       {erro && <span className="text-sm text-neg">{erro}</span>}
     </>
