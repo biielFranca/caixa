@@ -105,6 +105,43 @@ export default function CaixaEditor({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
+  // Lancamento e gravado no instante em que entra. Guardar so em memoria ate um
+  // botao de salvar significava perder o dia inteiro em qualquer recarga.
+  async function adicionarLancamento(method: Method, amount: number) {
+    const provisorio = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const posicao = draft[method].length;
+    setDraft((d) => ({ ...d, [method]: [...d[method], { key: provisorio, amount, note: null }] }));
+
+    const { data, error } = await supabase
+      .from("entries")
+      .insert({ day_id: day.id, method, amount, note: null, position: posicao })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      setDraft((d) => ({ ...d, [method]: d[method].filter((e) => e.key !== provisorio) }));
+      setMessage({ kind: "err", text: "Não foi possível salvar o lançamento. Tente de novo." });
+      return;
+    }
+    // Troca a chave provisoria pelo id real, que e o que o remover usa.
+    setDraft((d) => ({
+      ...d,
+      [method]: d[method].map((e) => (e.key === provisorio ? { ...e, key: data.id } : e)),
+    }));
+    setMessage(null);
+  }
+
+  async function removerLancamento(method: Method, key: string) {
+    const anterior = draft[method];
+    setDraft((d) => ({ ...d, [method]: d[method].filter((e) => e.key !== key) }));
+
+    const { error } = await supabase.from("entries").delete().eq("id", key);
+    if (error) {
+      setDraft((d) => ({ ...d, [method]: anterior }));
+      setMessage({ kind: "err", text: "Não foi possível remover o lançamento." });
+    }
+  }
+
   // ---------------- totais ao vivo ----------------
   const totals = useMemo(() => {
     const flat = (["dinheiro", "pix", "cartao"] as Method[]).flatMap((m) =>
@@ -172,18 +209,9 @@ export default function CaixaEditor({
       .eq("id", day.id);
     if (dayErr) throw dayErr;
 
-    // Lancamentos, turnos, canais e descontos do dia sao reescritos por inteiro:
-    // mais previsivel do que calcular diferenca, e o volume por dia e pequeno.
-    const { error: delEntries } = await supabase.from("entries").delete().eq("day_id", day.id);
-    if (delEntries) throw delEntries;
-    const rows = (["dinheiro", "pix", "cartao"] as Method[]).flatMap((m) =>
-      draft[m].map((e, i) => ({ day_id: day.id, method: m, amount: e.amount, note: e.note, position: i }))
-    );
-    if (rows.length) {
-      const { error } = await supabase.from("entries").insert(rows);
-      if (error) throw error;
-    }
-
+    // Os lancamentos nao entram aqui: cada um ja foi gravado quando digitado.
+    // Turnos, canais e descontos sao reescritos por inteiro, que e mais
+    // previsivel do que calcular diferenca e o volume por dia e pequeno.
     if (closing) {
       const { error: delShifts } = await supabase.from("day_shifts").delete().eq("day_id", day.id);
       if (delShifts) throw delShifts;
@@ -336,14 +364,9 @@ export default function CaixaEditor({
               Reabrir caixa
             </button>
           ) : step === "aberto" ? (
-            <>
-              <button onClick={() => run(false, "Lançamentos salvos.")} disabled={busy} className="btn-ghost">
-                Salvar lançamentos
-              </button>
-              <button onClick={() => setStep("fechando")} disabled={busy} className="btn-primary">
-                Fechar caixa
-              </button>
-            </>
+            <button onClick={() => setStep("fechando")} disabled={busy} className="btn-primary">
+              Fechar caixa
+            </button>
           ) : (
             <>
               <button onClick={() => setStep("aberto")} disabled={busy} className="btn-ghost">
@@ -364,7 +387,8 @@ export default function CaixaEditor({
             <EntryColumn
               key={m} method={m} title={METHOD_LABEL[m]}
               entries={draft[m]} readOnly={isClosed}
-              onChange={(next) => setDraft((d) => ({ ...d, [m]: next }))}
+              onAdd={(amount) => adicionarLancamento(m, amount)}
+              onRemove={(key) => removerLancamento(m, key)}
             />
           ))}
         </div>
@@ -372,7 +396,7 @@ export default function CaixaEditor({
 
       {!showAll && (
         <p className="text-center text-sm text-muted">
-          Fundo de troco: {formatBRL(toNumber(cashOpen))} em dinheiro
+          Cada lançamento é salvo na hora. Fundo de troco: {formatBRL(toNumber(cashOpen))} em dinheiro
           {toNumber(coinOpen) > 0 && ` e ${formatBRL(toNumber(coinOpen))} em moeda`}.
           O resto aparece ao fechar o caixa.
         </p>

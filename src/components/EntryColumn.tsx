@@ -8,12 +8,13 @@ import type { Method } from "@/lib/types";
 export type DraftEntry = { key: string; amount: number; note: string | null };
 
 export default function EntryColumn({
-  title, method, entries, onChange, readOnly = false,
+  title, method, entries, onAdd, onRemove, readOnly = false,
 }: {
   title: string;
   method: Method;
   entries: DraftEntry[];
-  onChange: (next: DraftEntry[]) => void;
+  onAdd: (amount: number) => void;
+  onRemove: (key: string) => void;
   readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState("");
@@ -21,10 +22,7 @@ export default function EntryColumn({
   function add() {
     const value = parseMoney(draft);
     if (!draft.trim() || value === 0) return;
-    onChange([
-      ...entries,
-      { key: `${method}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, amount: value, note: null },
-    ]);
+    onAdd(value);
     setDraft("");
   }
 
@@ -59,7 +57,7 @@ export default function EntryColumn({
             {!readOnly && (
               <button
                 type="button"
-                onClick={() => onChange(entries.filter((x) => x.key !== e.key))}
+                onClick={() => onRemove(e.key)}
                 className="shrink-0 px-1 text-sm text-muted hover:text-neg"
                 aria-label={`Remover lançamento ${i + 1}`}
               >
