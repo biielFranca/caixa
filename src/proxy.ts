@@ -47,5 +47,9 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // manifest e service worker precisam ficar de fora: o navegador os busca sem
+  // sessao, e redirecionar para o login quebra a instalacao do app.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw\\.js|icone-.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };
