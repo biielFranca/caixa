@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { dayTotals, formatBRL, formatDateBR, parseMoney, round, shiftAmount, weekdayBR } from "@/lib/calc";
+import { dayTotals, formatAmount, formatBRL, formatDateBR, parseMoney, round, shiftAmount, weekdayBR } from "@/lib/calc";
 import { METHOD_LABEL, PLATFORMS, PLATFORM_LABEL } from "@/lib/types";
 import type {
   Day, Desconto, Employee, Entry, Method, Platform, PlatformRevenue, Shift,
@@ -130,9 +130,19 @@ export default function CaixaEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [shiftDraft, motoboys, valorCozinha]
   );
+  // O caderno nao e digitado: e o que sobra do caixa depois de pagar o pessoal.
+  // Mesma conta da planilha, onde a celula era =TOTAL_CAIXA - TOTAL_FUNCIONARIOS.
+  const caderno = round(totals.caixa - folha);
+
   const livre = useMemo(
-    () => round(PLATFORMS.reduce((a, p) => a + toNumber(platformDraft[p]), 0)),
-    [platformDraft]
+    () =>
+      round(
+        PLATFORMS.filter((p) => p !== "caderno").reduce(
+          (a, p) => a + toNumber(platformDraft[p]),
+          0
+        ) + caderno
+      ),
+    [platformDraft, caderno]
   );
 
   // ---------------- persistencia ----------------
@@ -190,9 +200,10 @@ export default function CaixaEditor({
 
       const { error: delPlat } = await supabase.from("platform_revenue").delete().eq("day_id", day.id);
       if (delPlat) throw delPlat;
-      const platRows = PLATFORMS.filter((p) => platformDraft[p].trim() !== "").map((p) => ({
-        day_id: day.id, platform: p, amount: toNumber(platformDraft[p]),
-      }));
+      const platRows: { day_id: string; platform: Platform; amount: number }[] = PLATFORMS
+        .filter((p) => p !== "caderno" && platformDraft[p].trim() !== "")
+        .map((p) => ({ day_id: day.id, platform: p, amount: toNumber(platformDraft[p]) }));
+      platRows.push({ day_id: day.id, platform: "caderno", amount: caderno });
       if (platRows.length) {
         const { error } = await supabase.from("platform_revenue").insert(platRows);
         if (error) throw error;
@@ -455,7 +466,7 @@ export default function CaixaEditor({
               </div>
               <p className="mt-1 text-xs text-muted">Soma dos canais.</p>
               <div className="mt-3 grid grid-cols-2 gap-3">
-                {PLATFORMS.map((p) => (
+                {PLATFORMS.filter((p) => p !== "caderno").map((p) => (
                   <div key={p} className="space-y-1">
                     <label className="label">{PLATFORM_LABEL[p]}</label>
                     <MoneyInput
@@ -465,6 +476,19 @@ export default function CaixaEditor({
                     />
                   </div>
                 ))}
+                <div className="space-y-1">
+                  <label className="label">Caderno</label>
+                  <div
+                    className={`input flex items-center justify-between tabular-nums ${
+                      caderno < 0 ? "text-neg" : ""
+                    }`}
+                    aria-label="Caderno"
+                  >
+                    <span className="text-sm text-muted">R$</span>
+                    <span>{formatAmount(caderno)}</span>
+                  </div>
+                  <p className="text-xs text-muted">Total caixa − funcionários</p>
+                </div>
               </div>
             </div>
             <div className="card">
