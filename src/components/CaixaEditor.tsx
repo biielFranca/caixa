@@ -9,8 +9,10 @@ import type {
   Day, Desconto, Employee, Entry, Method, Platform, PlatformRevenue, Shift,
 } from "@/lib/types";
 import EntryColumn, { type DraftEntry } from "./EntryColumn";
+import BotaoResumo from "./BotaoResumo";
 import MoneyInput from "./MoneyInput";
 import { Stat } from "./Stat";
+import type { Resumo } from "@/lib/resumoImagem";
 
 type Props = {
   date: string;
@@ -268,6 +270,42 @@ export default function CaixaEditor({
     setBusy(false);
   }
 
+  const resumo: Resumo = useMemo(() => {
+    const trabalharam = motoboys.filter((e) => shiftDraft[e.id]?.enabled);
+    return {
+      data: date,
+      faturamento: totals.caderno,
+      formas: [
+        { label: "Dinheiro", valor: totals.dinheiro },
+        { label: "Pix", valor: totals.pix },
+        { label: "Cartão", valor: totals.cartao },
+      ],
+      totalCaixa: totals.caixa,
+      diferenca: totals.diferenca,
+      funcionarios: [
+        ...(valorCozinha > 0 ? [{ label: "Cozinha", valor: valorCozinha }] : []),
+        ...trabalharam.map((e) => {
+          const d = shiftDraft[e.id];
+          return {
+            label: e.name,
+            valor: pagamentoDe(e).liquido,
+            detalhe: d.deliveries.trim() ? `${d.deliveries} entregas` : undefined,
+          };
+        }),
+      ],
+      totalPagar: folha,
+      canais: [
+        ...PLATFORMS.filter((p) => p !== "caderno").map((p) => ({
+          label: PLATFORM_LABEL[p],
+          valor: toNumber(platformDraft[p]),
+        })),
+        { label: "Caderno", valor: caderno },
+      ],
+      totalLivre: livre,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, totals, motoboys, shiftDraft, valorCozinha, folha, platformDraft, caderno, livre]);
+
   const diffTone =
     Math.abs(totals.diferenca) < 0.01 ? "neutral" : totals.diferenca > 0 ? "pos" : "neg";
 
@@ -292,6 +330,7 @@ export default function CaixaEditor({
               {message.text}
             </span>
           )}
+          {showAll && <BotaoResumo resumo={resumo} />}
           {isClosed ? (
             <button onClick={reabrir} disabled={busy} className="btn-ghost">
               Reabrir caixa
