@@ -125,14 +125,23 @@ export default function CaixaEditor({
     return { bruto, desconto, liquido: round(bruto - desconto) };
   }
 
+  // O que sai do bolso no fechamento: ja sem o que o motoboy retirou durante o dia.
   const folha = useMemo(
     () => round(motoboys.reduce((a, e) => a + pagamentoDe(e).liquido, 0) + valorCozinha),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [shiftDraft, motoboys, valorCozinha]
   );
+
+  // Custo cheio do dia, antes do desconto. O desconto ja saiu do caixa quando o
+  // motoboy retirou, entao abater de novo contaria a mesma saida duas vezes.
+  const folhaBruta = useMemo(
+    () => round(motoboys.reduce((a, e) => a + pagamentoDe(e).bruto, 0) + valorCozinha),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [shiftDraft, motoboys, valorCozinha]
+  );
   // O caderno nao e digitado: e o que sobra do caixa depois de pagar o pessoal.
   // Mesma conta da planilha, onde a celula era =TOTAL_CAIXA - TOTAL_FUNCIONARIOS.
-  const caderno = round(totals.caixa - folha);
+  const caderno = round(totals.caixa - folhaBruta);
 
   const livre = useMemo(
     () =>
@@ -487,7 +496,7 @@ export default function CaixaEditor({
                     <span className="text-sm text-muted">R$</span>
                     <span>{formatAmount(caderno)}</span>
                   </div>
-                  <p className="text-xs text-muted">Total caixa − funcionários</p>
+                  <p className="text-xs text-muted">Total caixa − funcionários, sem desconto</p>
                 </div>
               </div>
             </div>
