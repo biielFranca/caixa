@@ -73,7 +73,7 @@ export function desenharResumo(r: Resumo): Promise<Blob> {
   const linhasObs = obs ? quebrarTexto(ctx, obs, W - PAD * 2) : [];
 
   // A observacao de cada funcionario tambem ocupa linha propria.
-  ctx.font = `400 13px ${FONTE}`;
+  ctx.font = `700 13px ${FONTE}`;
   const obsPorFuncionario = new Map<number, string[]>();
   r.funcionarios.forEach((f, i) => {
     const t = (f.obs ?? "").trim();
@@ -163,13 +163,16 @@ export function desenharResumo(r: Resumo): Promise<Blob> {
     linha(l);
     const notas = obsPorFuncionario.get(i);
     if (!notas) return;
-    ctx.font = `400 13px ${FONTE}`;
-    ctx.fillStyle = COR.fraca;
+    // Alinhada a direita, logo abaixo do valor a que se refere.
+    ctx.font = `700 13px ${FONTE}`;
+    ctx.fillStyle = COR.tinta;
+    ctx.textAlign = "right";
     y -= 10;
     for (const t of notas) {
-      ctx.fillText(t, PAD + 14, y);
+      ctx.fillText(t, W - PAD, y);
       y += 20;
     }
+    ctx.textAlign = "left";
     y += 10;
   });
   y += 24;
