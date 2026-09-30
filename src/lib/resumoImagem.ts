@@ -12,6 +12,7 @@ export type Resumo = {
   totalPagar: number;
   canais: ResumoLinha[];
   totalLivre: number;
+  observacoes?: string | null;
 };
 
 const W = 720;
@@ -26,6 +27,26 @@ const COR = {
 };
 const FONTE = '-apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
+/** Quebra o texto em linhas que cabem na largura, respeitando quebras digitadas. */
+function quebrarTexto(ctx: CanvasRenderingContext2D, texto: string, largura: number): string[] {
+  const linhas: string[] = [];
+  for (const paragrafo of texto.split(/\r?\n/)) {
+    if (!paragrafo.trim()) { linhas.push(""); continue; }
+    let atual = "";
+    for (const palavra of paragrafo.split(/\s+/)) {
+      const tentativa = atual ? `${atual} ${palavra}` : palavra;
+      if (ctx.measureText(tentativa).width <= largura) {
+        atual = tentativa;
+      } else {
+        if (atual) linhas.push(atual);
+        atual = palavra;
+      }
+    }
+    if (atual) linhas.push(atual);
+  }
+  return linhas;
+}
+
 /** Desenha o resumo do dia e devolve o PNG. */
 export function desenharResumo(r: Resumo): Promise<Blob> {
   const secoes = [
@@ -34,17 +55,27 @@ export function desenharResumo(r: Resumo): Promise<Blob> {
     r.funcionarios.length,
     r.canais.length,
   ];
+
+  const obs = (r.observacoes ?? "").trim();
+  const dpr = 2;
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d")!;
+
+  // A observacao e texto livre, entao a altura da imagem so e conhecida depois
+  // de medir as linhas. Mede primeiro, dimensiona depois: redimensionar o canvas
+  // limpa o desenho.
+  ctx.font = `400 15px ${FONTE}`;
+  const linhasObs = obs ? quebrarTexto(ctx, obs, W - PAD * 2) : [];
+
   const altura =
     150 + // cabecalho
     secoes.reduce((a, n) => a + 54 + n * 34, 0) + // titulo + linhas de cada secao
     3 * 24 + // espacos entre secoes
+    (linhasObs.length ? 24 + 54 + linhasObs.length * 24 : 0) + // observacoes
     70; // rodape
 
-  const dpr = 2;
-  const canvas = document.createElement("canvas");
   canvas.width = W * dpr;
   canvas.height = altura * dpr;
-  const ctx = canvas.getContext("2d")!;
   ctx.scale(dpr, dpr);
 
   ctx.fillStyle = COR.fundo;
@@ -118,6 +149,17 @@ export function desenharResumo(r: Resumo): Promise<Blob> {
 
   titulo("Total livre", r.totalLivre, r.totalLivre < 0 ? "neg" : "marca");
   r.canais.forEach((l) => linha(l));
+
+  if (linhasObs.length) {
+    y += 24;
+    titulo("Observações");
+    ctx.font = `400 15px ${FONTE}`;
+    ctx.fillStyle = COR.tinta;
+    for (const l of linhasObs) {
+      ctx.fillText(l, PAD, y);
+      y += 24;
+    }
+  }
 
   // ---------- rodape ----------
   ctx.font = `400 12px ${FONTE}`;

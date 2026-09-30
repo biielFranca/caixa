@@ -330,9 +330,10 @@ export default function CaixaEditor({
         { label: "Caderno", valor: caderno },
       ],
       totalLivre: livre,
+      observacoes: notes,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, totals, motoboys, shiftDraft, valorCozinha, folha, platformDraft, caderno, livre]);
+  }, [date, totals, motoboys, shiftDraft, valorCozinha, folha, platformDraft, caderno, livre, notes]);
 
   const diffTone =
     Math.abs(totals.diferenca) < 0.01 ? "neutral" : totals.diferenca > 0 ? "pos" : "neg";
