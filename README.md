@@ -121,7 +121,10 @@ nem pela Vercel.
 Deploy sai da branch `main`. A Vercel bloqueia commit cujo autor ela não
 reconhece, então o e-mail do commit precisa estar cadastrado na conta.
 
-Um login apenas, criado direto no Supabase — não há cadastro aberto. Toda página
+Um login apenas, criado direto no Supabase. O cadastro público do Supabase
+deve ficar desligado em Authentication > Sign In / Providers; além disso, o
+acesso aos dados exige estar em `public.app_users` (ver `supabase/migrations/`).
+Toda página
 protegida valida a sessão no servidor via `requireUser()`; o `proxy.ts` apenas
 redireciona e renova o cookie, e não é tratado como barreira de segurança.
 
