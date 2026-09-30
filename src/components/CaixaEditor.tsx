@@ -318,6 +318,7 @@ export default function CaixaEditor({
             label: e.name,
             valor: pagamentoDe(e).liquido,
             detalhe: d.deliveries.trim() ? `${d.deliveries} entregas` : undefined,
+            obs: d.note.trim() || null,
           };
         }),
       ],

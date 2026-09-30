@@ -1,6 +1,11 @@
 import { formatAmount, formatDateBR, weekdayBR } from "./calc";
 
-export type ResumoLinha = { label: string; valor: number; detalhe?: string };
+export type ResumoLinha = {
+  label: string;
+  valor: number;
+  detalhe?: string;
+  obs?: string | null;
+};
 
 export type Resumo = {
   data: string;
@@ -67,11 +72,21 @@ export function desenharResumo(r: Resumo): Promise<Blob> {
   ctx.font = `400 15px ${FONTE}`;
   const linhasObs = obs ? quebrarTexto(ctx, obs, W - PAD * 2) : [];
 
+  // A observacao de cada funcionario tambem ocupa linha propria.
+  ctx.font = `400 13px ${FONTE}`;
+  const obsPorFuncionario = new Map<number, string[]>();
+  r.funcionarios.forEach((f, i) => {
+    const t = (f.obs ?? "").trim();
+    if (t) obsPorFuncionario.set(i, quebrarTexto(ctx, t, W - PAD * 2 - 14));
+  });
+  const linhasObsFunc = [...obsPorFuncionario.values()].reduce((a, l) => a + l.length, 0);
+
   const altura =
     150 + // cabecalho
     secoes.reduce((a, n) => a + 54 + n * 34, 0) + // titulo + linhas de cada secao
+    linhasObsFunc * 20 + // observacao por funcionario
     3 * 24 + // espacos entre secoes
-    (linhasObs.length ? 24 + 54 + linhasObs.length * 24 : 0) + // observacoes
+    (linhasObs.length ? 24 + 54 + linhasObs.length * 24 : 0) + // observacoes do dia
     70; // rodape
 
   canvas.width = W * dpr;
@@ -144,7 +159,19 @@ export function desenharResumo(r: Resumo): Promise<Blob> {
   y += 24;
 
   titulo("Funcionários", r.totalPagar);
-  r.funcionarios.forEach((l) => linha(l));
+  r.funcionarios.forEach((l, i) => {
+    linha(l);
+    const notas = obsPorFuncionario.get(i);
+    if (!notas) return;
+    ctx.font = `400 13px ${FONTE}`;
+    ctx.fillStyle = COR.fraca;
+    y -= 10;
+    for (const t of notas) {
+      ctx.fillText(t, PAD + 14, y);
+      y += 20;
+    }
+    y += 10;
+  });
   y += 24;
 
   titulo("Total livre", r.totalLivre, r.totalLivre < 0 ? "neg" : "marca");
